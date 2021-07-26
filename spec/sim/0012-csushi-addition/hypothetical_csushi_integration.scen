@@ -10,15 +10,6 @@ Alias CUSDCHolder "0x5e34bc93a7506ecc8562ade4d5c8b090247a6349"
 Web3Fork "https://mainnet-eth.compound.finance/@12884400" (CompHolder SushiHolder CUSDCHolder)
 UseConfigs mainnet
 
--- update to the new oracle implementation
-Alias NewOracle "0x6D2299C48a8dD07a872FDd0F8233924872Ad1071"
--- Delegate and propose update
-From CompHolder (Comp Delegate CompHolder)
-From CompHolder (GovernorBravo GovernorBravoDelegator Propose "Update Oracle" [(Address Comptroller)] [0] ["_setPriceOracle(address)"] [[(address NewOracle)]])
-Print "New Oracle Set"
-
-
-
 -- Delegate and propose update
 From CompHolder (Comp Delegate CompHolder)
 From CompHolder (GovernorBravo GovernorBravoDelegator Propose "Add SUSHI Market" [(Address Comptroller) (Address Comptroller) (Address cSUSHI)] [0 0 0] ["_supportMarket(address)" "_setCollateralFactor(address,uint256)" "_setReserveFactor(uint256)"] [[(address cSUSHI)] [(address cSUSHI) 0] [250000000000000000]])
