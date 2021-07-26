@@ -1,0 +1,69 @@
+#!/usr/bin/env yarn repl -s
+
+PrintTransactionLogs
+
+-- Token holder addresses for mocking
+Alias CompHolder "0x7587caefc8096f5f40acb83a09df031a018c66ec"
+Alias YearnHolder "0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503"
+Alias CUSDCHolder "0x5e34bc93a7506ecc8562ade4d5c8b090247a6349"
+
+Web3Fork "https://mainnet-eth.compound.finance/@12884400" (CompHolder YearnHolder CUSDCHolder)
+UseConfigs mainnet
+
+-- update to the new oracle implementation
+Alias NewOracle "0x6D2299C48a8dD07a872FDd0F8233924872Ad1071"
+-- Delegate and propose update
+From CompHolder (Comp Delegate CompHolder)
+From CompHolder (GovernorBravo GovernorBravoDelegator Propose "Update Oracle" [(Address Comptroller)] [0] ["_setPriceOracle(address)"] [[(address NewOracle)]])
+Print "New Oracle Set"
+
+-- Fast forward, vote, queue, execute
+MineBlock
+AdvanceBlocks 14000
+From CompHolder (GovernorBravo GovernorBravoDelegator Proposal LastProposal Vote For)
+AdvanceBlocks 20000
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Queue
+IncreaseTime 604910
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Execute
+
+
+-- Delegate and propose update
+From CompHolder (Comp Delegate CompHolder)
+From CompHolder (GovernorBravo GovernorBravoDelegator Propose "Add YFI Market" [(Address Comptroller) (Address Comptroller) (Address cYFI)] [0 0 0] ["_supportMarket(address)" "_setCollateralFactor(address,uint256)" "_setReserveFactor(uint256)"] [[(address cYFI)] [(address cYFI) 0] [250000000000000000]])
+
+-- Fast forward, vote, queue, execute
+MineBlock
+AdvanceBlocks 14000
+From CompHolder (GovernorBravo GovernorBravoDelegator Proposal LastProposal Vote For)
+AdvanceBlocks 20000
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Queue
+IncreaseTime 604910
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Execute
+
+-- Assert cYFI market supported
+Assert True (Comptroller CheckListed cYFI)
+
+-- Ensure accrue interest works
+CToken cYFI AccrueInterest
+
+-- Mint test
+From YearnHolder (Erc20 YFI Approve (Address cYFI) 10e18)
+From YearnHolder (CToken cYFI Mint 10e18)
+Assert Equal (Erc20 YFI TokenBalance cYFI) (10e18)
+
+
+-- Borrow test
+From CUSDCHolder (CToken cYFI Borrow 1e18)
+Assert Equal (Erc20 YFI TokenBalance CUSDCHolder) (1e18)
+Assert Equal (Erc20 YFI TokenBalance cYFI) (9e18)
+
+-- Repay borrow test
+From CUSDCHolder (Erc20 YFI Approve (Address cYFI) 1e18)
+From CUSDCHolder (CToken cYFI RepayBorrow 1e18)
+Assert Equal (Erc20 YFI TokenBalance CUSDCHolder) (0)
+Assert Equal (Erc20 YFI TokenBalance cYFI) (10e18)
+
+-- Redeem test (note: 50 cYFI == 1 YFI initially)
+From YearnHolder (CToken cYFI Redeem 50e8)
+
+Print "cYFI integration ok"

@@ -1,0 +1,69 @@
+#!/usr/bin/env yarn repl -s
+
+PrintTransactionLogs
+
+-- Token holder addresses for mocking
+Alias CompHolder "0x7587caefc8096f5f40acb83a09df031a018c66ec"
+Alias AaveHolder "0xbe0eb53f46cd790cd13851d5eff43d12404d33e8"
+Alias CUSDCHolder "0x5e34bc93a7506ecc8562ade4d5c8b090247a6349"
+
+Web3Fork "https://mainnet-eth.compound.finance/@12884400" (CompHolder AaveHolder CUSDCHolder)
+UseConfigs mainnet
+
+-- update to the new oracle implementation
+Alias NewOracle "0x6D2299C48a8dD07a872FDd0F8233924872Ad1071"
+-- Delegate and propose update
+From CompHolder (Comp Delegate CompHolder)
+From CompHolder (GovernorBravo GovernorBravoDelegator Propose "Update Oracle" [(Address Comptroller)] [0] ["_setPriceOracle(address)"] [[(address NewOracle)]])
+Print "New Oracle Set"
+
+-- Fast forward, vote, queue, execute
+MineBlock
+AdvanceBlocks 14000
+From CompHolder (GovernorBravo GovernorBravoDelegator Proposal LastProposal Vote For)
+AdvanceBlocks 20000
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Queue
+IncreaseTime 604910
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Execute
+
+
+-- Delegate and propose update
+From CompHolder (Comp Delegate CompHolder)
+From CompHolder (GovernorBravo GovernorBravoDelegator Propose "Add AAVE Market" [(Address Comptroller) (Address Comptroller) (Address cAAVE)] [0 0 0] ["_supportMarket(address)" "_setCollateralFactor(address,uint256)" "_setReserveFactor(uint256)"] [[(address cAAVE)] [(address cAAVE) 0] [250000000000000000]])
+
+-- Fast forward, vote, queue, execute
+MineBlock
+AdvanceBlocks 14000
+From CompHolder (GovernorBravo GovernorBravoDelegator Proposal LastProposal Vote For)
+AdvanceBlocks 20000
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Queue
+IncreaseTime 604910
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Execute
+
+-- Assert cAAVE market supported
+Assert True (Comptroller CheckListed cAAVE)
+
+-- Ensure accrue interest works
+CToken cAAVE AccrueInterest
+
+-- Mint test
+From AaveHolder (Erc20 AAVE Approve (Address cAAVE) 10e18)
+From AaveHolder (CToken cAAVE Mint 10e18)
+Assert Equal (Erc20 AAVE TokenBalance cAAVE) (10e18)
+
+
+-- Borrow test
+From CUSDCHolder (CToken cAAVE Borrow 1e18)
+Assert Equal (Erc20 AAVE TokenBalance CUSDCHolder) (1e18)
+Assert Equal (Erc20 AAVE TokenBalance cAAVE) (9e18)
+
+-- Repay borrow test
+From CUSDCHolder (Erc20 AAVE Approve (Address cAAVE) 1e18)
+From CUSDCHolder (CToken cAAVE RepayBorrow 1e18)
+Assert Equal (Erc20 AAVE TokenBalance CUSDCHolder) (0)
+Assert Equal (Erc20 AAVE TokenBalance cAAVE) (10e18)
+
+-- Redeem test (note: 50 cAAVE == 1 AAVE initially)
+From AaveHolder (CToken cAAVE Redeem 50e8)
+
+Print "cAAVE integration ok"

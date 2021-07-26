@@ -1,4 +1,4 @@
-
+var bignumber = require('bignumber.js');
 function getRaw(config, key, required=true) {
   let value = config[key];
   if (required && !value) {
@@ -51,6 +51,17 @@ function getNumber(config, key, required=true) {
     return result;
   }
 }
+function getBigNumber(config, key, required=true) {
+  let value = getRaw(config, key, required);
+  let result = new bignumber.BigNumber(value);
+  if (value == null && !required){
+    return null;
+  } else if (result.isNaN()) {
+    throw new Error(`Invalid number for \`${key}\`=${value}`);
+  } else {
+    return result;
+  }
+}
 
 function getArray(config, key, required = true) {
   let value = getRaw(config, key, required);
@@ -91,11 +102,13 @@ function loadConf(configArg, addresses) {
     underlying: getAddress(addresses, config, 'underlying'),
     comptroller: getAddress(addresses, config, 'comptroller'),
     interestRateModel: getAddress(addresses, config, 'interestRateModel'),
-    initialExchangeRateMantissa: getNumber(config, 'initialExchangeRateMantissa'),
+    initialExchangeRateMantissa: getBigNumber(config, 'initialExchangeRateMantissa'),
     name: getString(config, 'name'),
     symbol: getString(config, 'symbol'),
     decimals: getNumber(config, 'decimals'),
     admin: getAddress(addresses, config, 'admin'),
+    implementation: getAddress(addresses, config, 'implementation'),
+    becomeImplementationData: getRaw(config, 'becomeImplementationData')
   };
 
   return conf;

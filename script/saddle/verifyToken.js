@@ -16,7 +16,9 @@ npx saddle -n rinkeby script token:verify 0x19B674715cD20626415C738400FDd0d32D68
   "name": "Compound Kyber Network Crystal",
   "symbol": "cKNC",
   "decimals": "8",
-  "admin": "$Timelock"
+  "admin": "$Timelock",
+  "implementation": "$CErc20Delegate",
+  "becomeImplementationData": []
 }'
   `);
 }
@@ -39,10 +41,10 @@ npx saddle -n rinkeby script token:verify 0x19B674715cD20626415C738400FDd0d32D68
 
   console.log(`Verifying cToken at ${address} with ${JSON.stringify(conf)}`);
 
-  let deployArgs = [conf.underlying, conf.comptroller, conf.interestRateModel, conf.initialExchangeRateMantissa.toString(), conf.name, conf.symbol, conf.decimals, conf.admin];
+  let deployArgs = [conf.underlying, conf.comptroller, conf.interestRateModel, conf.initialExchangeRateMantissa.toString(), conf.name, conf.symbol, conf.decimals, conf.admin,conf.implementation,conf.becomeImplementationData];
 
   // TODO: Make sure we match optimizations count, etc
-  await saddle.verify(etherscanApiKey, address, 'CErc20Immutable', deployArgs, 200, undefined);
+  await saddle.verify(etherscanApiKey, address, 'CErc20Delegator', deployArgs, 200, undefined);
 
   console.log(`Contract verified at https://${network}.etherscan.io/address/${address}`);
 

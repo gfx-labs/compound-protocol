@@ -1,0 +1,60 @@
+#!/usr/bin/env yarn repl -s
+
+PrintTransactionLogs
+
+-- Token holder addresses for mocking
+Alias CompHolder "0x7587caefc8096f5f40acb83a09df031a018c66ec"
+Alias SushiHolder "0xf977814e90da44bfa03b6295a0616a897441acec"
+Alias CUSDCHolder "0x5e34bc93a7506ecc8562ade4d5c8b090247a6349"
+
+Web3Fork "https://mainnet-eth.compound.finance/@12884400" (CompHolder SushiHolder CUSDCHolder)
+UseConfigs mainnet
+
+-- update to the new oracle implementation
+Alias NewOracle "0x6D2299C48a8dD07a872FDd0F8233924872Ad1071"
+-- Delegate and propose update
+From CompHolder (Comp Delegate CompHolder)
+From CompHolder (GovernorBravo GovernorBravoDelegator Propose "Update Oracle" [(Address Comptroller)] [0] ["_setPriceOracle(address)"] [[(address NewOracle)]])
+Print "New Oracle Set"
+
+
+
+-- Delegate and propose update
+From CompHolder (Comp Delegate CompHolder)
+From CompHolder (GovernorBravo GovernorBravoDelegator Propose "Add SUSHI Market" [(Address Comptroller) (Address Comptroller) (Address cSUSHI)] [0 0 0] ["_supportMarket(address)" "_setCollateralFactor(address,uint256)" "_setReserveFactor(uint256)"] [[(address cSUSHI)] [(address cSUSHI) 0] [250000000000000000]])
+
+-- Fast forward, vote, queue, execute
+MineBlock
+AdvanceBlocks 14000
+From CompHolder (GovernorBravo GovernorBravoDelegator Proposal LastProposal Vote For)
+AdvanceBlocks 20000
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Queue
+IncreaseTime 604910
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Execute
+
+-- Assert cSUSHI market supported
+Assert True (Comptroller CheckListed cSUSHI)
+
+-- Ensure accrue interest works
+CToken cSUSHI AccrueInterest
+
+-- Mint test
+From SushiHolder (Erc20 SUSHI Approve (Address cSUSHI) 10e18)
+From SushiHolder (CToken cSUSHI Mint 10e18)
+Assert Equal (Erc20 SUSHI TokenBalance cSUSHI) (10e18)
+
+-- Borrow test
+From CUSDCHolder (CToken cSUSHI Borrow 1e18)
+Assert Equal (Erc20 SUSHI TokenBalance CUSDCHolder) (1e18)
+Assert Equal (Erc20 SUSHI TokenBalance cSUSHI) (9e18)
+
+-- Repay borrow test
+From CUSDCHolder (Erc20 SUSHI Approve (Address cSUSHI) 1e18)
+From CUSDCHolder (CToken cSUSHI RepayBorrow 1e18)
+Assert Equal (Erc20 SUSHI TokenBalance CUSDCHolder) (0)
+Assert Equal (Erc20 SUSHI TokenBalance cSUSHI) (10e18)
+
+-- Redeem test (note: 50 cSUSHI == 1 SUSHI initially)
+From SushiHolder (CToken cSUSHI Redeem 50e8)
+
+Print "cSUSHI integration ok"
