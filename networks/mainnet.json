@@ -82,10 +82,12 @@
         "cSUSHI":"0x4B0181102A0112A2ef11AbEE5563bb4a3176c9d7",
         "cAAVE":"0xe65cdB6479BaC1e22340E4E755fAE7E509EcD06c",
         "cYFI":"0x80a2AE356fc9ef4305676f7a3E2Ed04e12C33946",
+        "cFEI":"0x7713DD9Ca933848F6819F38B8352D9A15EA73F67",
         "MKR":"0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2",
         "SUSHI":"0x6b3595068778dd592e39a122f4f5a5cf09c90fe2",
         "AAVE":"0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
         "YFI":"0x0bc529c00c6401aef6d220be8c6ea1667f6ad93e",
+        "FEI":"0x956F47F50A910163D8BF957Cf5846D573E7f87CA",
         "GovernorBravoDelegator": "0xc0da02939e1441f497fd74f78ce7decb17b66529",
         "GovernorBravoDelegate": "0xAAAaaAAAaaaa8FdB04F544F4EEe52939CddCe378"
     },
@@ -398,6 +400,11 @@
           "name":"yearn.finance",
           "symbol":"YFI",
           "address":"0x0bc529c00c6401aef6d220be8c6ea1667f6ad93e"
+        },
+        "FEI":{
+            "name":"Fei Protocol",
+            "symbol":"FEI",
+            "address":"0x956F47F50A910163D8BF957Cf5846D573E7f87CA"
         }
     },
     "CTokenDelegate": {
@@ -578,7 +585,15 @@
           "contract":"cErc20Delegator",
           "initialexchangeratemantissa": "200000000000000000000000000",
           "address":"0x80a2AE356fc9ef4305676f7a3E2Ed04e12C33946"
-
+        },
+        "cFEI":{
+          "name": "Compound FEI Token",
+          "symbol": "cFEI",
+          "decimals": 8,
+          "underlying": "0x956F47F50A910163D8BF957Cf5846D573E7f87CA",
+          "contract":"cErc20Delegator",
+          "initialexchangeratemantissa": "200000000000000000000000000",
+          "address":"0x7713DD9Ca933848F6819F38B8352D9A15EA73F67"
         }
     },
     "InterestRateModel": {

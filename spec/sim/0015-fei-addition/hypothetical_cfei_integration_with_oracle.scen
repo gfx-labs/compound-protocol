@@ -1,0 +1,67 @@
+#!/usr/bin/env yarn repl -s
+
+PrintTransactionLogs
+
+-- Token holder addresses for mocking
+Alias CompHolder "0x7587caefc8096f5f40acb83a09df031a018c66ec"
+Alias FEIHolder "0xf4efe4b05c1e8ee7bbcf823601f54dbe187652b5"
+Alias CUSDCHolder "0x5e34bc93a7506ecc8562ade4d5c8b090247a6349"
+
+Web3Fork "https://mainnet-eth.compound.finance/@13245663" (CompHolder FEIHolder CUSDCHolder)
+UseConfigs mainnet
+
+-- update to the new oracle implementation
+Alias NewOracle "0x6D2299C48a8dD07a872FDd0F8233924872Ad1071"
+-- Delegate and propose update
+From CompHolder (Comp Delegate CompHolder)
+From CompHolder (GovernorBravo GovernorBravoDelegator Propose "Update Oracle" [(Address Comptroller)] [0] ["_setPriceOracle(address)"] [[(address NewOracle)]])
+Print "New Oracle Set"
+
+-- Fast forward, vote, queue, execute
+MineBlock
+AdvanceBlocks 14000
+From CompHolder (GovernorBravo GovernorBravoDelegator Proposal LastProposal Vote For)
+AdvanceBlocks 20000
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Queue
+IncreaseTime 604910
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Execute
+
+-- Delegate and propose update
+From CompHolder (Comp Delegate CompHolder)
+From CompHolder (GovernorBravo GovernorBravoDelegator Propose "Add FEI Market" [(Address Comptroller) (Address Comptroller) (Address cFEI)] [0 0 0] ["_supportMarket(address)" "_setCollateralFactor(address,uint256)" "_setReserveFactor(uint256)"] [[(address cFEI)] [(address cFEI) 0] [250000000000000000]])
+
+-- Fast forward, vote, queue, execute
+MineBlock
+AdvanceBlocks 14000
+From CompHolder (GovernorBravo GovernorBravoDelegator Proposal LastProposal Vote For)
+AdvanceBlocks 20000
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Queue
+IncreaseTime 604910
+GovernorBravo GovernorBravoDelegator Proposal LastProposal Execute
+
+-- Assert cFEI market supported
+Assert True (Comptroller CheckListed cFEI)
+
+-- Ensure accrue interest works
+CToken cFEI AccrueInterest
+
+-- Mint test
+From FEIHolder (Erc20 FEI Approve (Address cFEI) 10e18)
+From FEIHolder (CToken cFEI Mint 10e18)
+Assert Equal (Erc20 FEI TokenBalance cFEI) (10e18)
+
+-- Borrow test
+From CUSDCHolder (CToken cFEI Borrow 1e18)
+Assert Equal (Erc20 FEI TokenBalance CUSDCHolder) (1e18)
+Assert Equal (Erc20 FEI TokenBalance cFEI) (9e18)
+
+-- Repay borrow test
+From CUSDCHolder (Erc20 FEI Approve (Address cFEI) 1e18)
+From CUSDCHolder (CToken cFEI RepayBorrow 1e18)
+Assert Equal (Erc20 FEI TokenBalance CUSDCHolder) (0)
+Assert Equal (Erc20 FEI TokenBalance cFEI) (10e18)
+
+-- Redeem test (note: 50 cFEI == 1 FEI initially)
+From FEIHolder (CToken cFEI Redeem 50e8)
+
+Print "cFEI integration ok"
